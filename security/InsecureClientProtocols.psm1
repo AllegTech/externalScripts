@@ -26,29 +26,23 @@ function Test-RegistryValue {
         [ValidateNotNullOrEmpty()]$Value
     )
 
-    write-host "Path: $path"
-    write-host "Name: $name"
-    write-host "Value: $value"
     $ItemProperty = "DoesNotExist"
     try {
         $ItemProperty = Get-ItemProperty -Path $Path | Select-Object -ExpandProperty $Name -ErrorAction Stop
         if ($ItemProperty -eq "DoesNotExist") {
             # key does not exist, needs to be created
-            write-host "Result: 2"
+            return 2
         }
         elseif (($ItemProperty -ne $Value)) {
             # key exists, but does not match desired value
-            write-host "Result: 1"
             return 1
         }
         else {
             # key exists and matches desired value
-            write-host "Result: 0"
             return 0
         }
     } 
     catch {
-        write-host "Result: catch"
         return 2
     }
 }
@@ -117,6 +111,7 @@ function Disable-InsecureClientProtocols {
         "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.1\Client"
     )
 
+    $results = @()
     foreach ($Path in $Paths) {
         # create path if needed
         $PathExists = Test-Path -Path $Path
@@ -130,19 +125,24 @@ function Disable-InsecureClientProtocols {
             $Name = "DisabledByDefault"
             $Value = 1
             $Test = Test-RegistryValue -Path $Path -Name $Name -Value $Value
-            Update-RegistryValue -Exists $Test -Path $Path -Name $Name -Value $Value
+            $results += Update-RegistryValue -Exists $Test -Path $Path -Name $Name -Value $Value
 
             # explicitly set to disabled
             $Test = $null
             $Name = "Enabled"
             $Value = 0
             $Test = Test-RegistryValue -Path $Path -Name $Name -Value $Value
-            Update-RegistryValue -Exists $Test -Path $Path -Name $Name -Value $Value
-
+            $results += Update-RegistryValue -Exists $Test -Path $Path -Name $Name -Value $Value
         }
     }
+    if ($results.contains($false)) {
+        return $false
+    }
+    else {
+        return $true
+    }
 }
-Export-ModuleMember -Function Disable-InsecureClientProtocols
+#Export-ModuleMember -Function Disable-InsecureClientProtocols
 
 function Test-InsecureClientProtocols {
     <#
@@ -186,5 +186,5 @@ function Test-InsecureClientProtocols {
         return $true
     }
 }
-Export-ModuleMember -Function Test-InsecureClientProtocols
+#Export-ModuleMember -Function Test-InsecureClientProtocols
 
